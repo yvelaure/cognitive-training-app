@@ -1,0 +1,76 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build web app
+      run: npm run build
+      
+    - name: Sync Capacitor
+      run: |
+        npx cap sync android
+        
+    - name: Build Android APK
+      run: |
+        cd android
+        ./gradlew assembleRelease
+        
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: brain-games-hub-apk
+        path: android/app/build/outputs/apk/release/app-release.apk
+        retention-days: 30
+        
+    - name: Create Release
+      if: github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v1.0.${{ github.run_number }}
+        name: Brain Games Hub v1.0.${{ github.run_number }}
+        files: android/app/build/outputs/apk/release/app-release.apk
+        body: |
+          🎮 Brain Games Hub Android APK
+          
+          **Features:**
+          - 13+ Brain Training Games
+          - Offline Functionality  
+          - Native Android Features
+          - Professional APK Signing
+          
+          **Install Instructions:**
+          1. Download app-release.apk
+          2. Enable "Install from Unknown Sources" on Android
+          3. Install and enjoy!
+          
+          **Google Play Store Ready**
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
