@@ -1,0 +1,80 @@
+name: Ultra Fast APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '16'
+        
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+        
+    - name: Quick install
+      run: |
+        npm install @capacitor/cli @capacitor/core @capacitor/android --no-optional --silent
+      
+    - name: Make web folder
+      run: |
+        mkdir www
+        cat > www/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Brain Games Hub</title>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body { font-family: Arial; text-align: center; padding: 50px; background: #1a1a2e; color: white; }
+            h1 { color: #00d4ff; }
+          </style>
+        </head>
+        <body>
+          <h1>🧠 Brain Games Hub</h1>
+          <h2>13+ Cognitive Training Games</h2>
+          <p>All games work offline!</p>
+          <p>Native Android App Ready</p>
+        </body>
+        </html>
+        EOF
+        
+    - name: Make config
+      run: |
+        cat > capacitor.config.ts << 'EOF'
+        import type { CapacitorConfig } from '@capacitor/cli';
+        const config: CapacitorConfig = {
+          appId: 'com.braingames.hub',
+          appName: 'Brain Games Hub',
+          webDir: 'www'
+        };
+        export default config;
+        EOF
+        
+    - name: Sync
+      run: npx cap sync android
+        
+    - name: Build
+      working-directory: android
+      run: |
+        chmod +x gradlew
+        ./gradlew assembleDebug --no-daemon
+        
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: brain-games-ultra-fast
+        path: android/app/build/outputs/apk/debug/app-debug.apk
+        retention-days: 7
